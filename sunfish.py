@@ -119,7 +119,7 @@ EVAL_ROUGHNESS = 20
 # Chess logic
 ###############################################################################
 
-class Position(namedtuple('Position', 'board score wc bc ep kp')):
+class Position:
     """ A state of a chess game
     board -- a 120 char representation of the board
     score -- the board evaluation
@@ -128,6 +128,15 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
     ep - the en passant square
     kp - the king passant square
     """
+
+    def __init__(self, board, score, wc, bc, ep, kp, pst):
+        self.board = board
+        self.score = score
+        self.wc = wc
+        self.bc = bc
+        self.ep = ep
+        self.kp = kp
+        self.pst = pst
 
     def gen_moves(self):
         # For each of our pieces, iterate through each possible 'ray' of moves,
@@ -157,13 +166,13 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
         return Position(
             self.board[::-1].swapcase(), -self.score, self.bc, self.wc,
             119-self.ep if self.ep else 0,
-            119-self.kp if self.kp else 0)
+            119-self.kp if self.kp else 0, self.pst)
 
     def nullmove(self):
         ''' Like rotate, but clears ep and kp '''
         return Position(
             self.board[::-1].swapcase(), -self.score,
-            self.bc, self.wc, 0, 0)
+            self.bc, self.wc, 0, 0, self.pst)
 
     def move(self, move):
         i, j = move
@@ -197,29 +206,29 @@ class Position(namedtuple('Position', 'board score wc bc ep kp')):
             if j - i in (N+W, N+E) and q == '.':
                 board = put(board, j+S, '.')
         # We rotate the returned position, so it's ready for the next player
-        return Position(board, score, wc, bc, ep, kp).rotate()
+        return Position(board, score, wc, bc, ep, kp, self.pst).rotate()
 
     def value(self, move):
         i, j = move
         p, q = self.board[i], self.board[j]
         # Actual move
-        score = pst[p][j] - pst[p][i]
+        score = self.pst[p][j] - self.pst[p][i]
         # Capture
         if q.islower():
-            score += pst[q.upper()][119-j]
+            score += self.pst[q.upper()][119-j]
         # Castling check detection
         if abs(j-self.kp) < 2:
-            score += pst['K'][119-j]
+            score += self.pst['K'][119-j]
         # Castling
         if p == 'K' and abs(i-j) == 2:
-            score += pst['R'][(i+j)//2]
-            score -= pst['R'][A1 if j < i else H1]
+            score += self.pst['R'][(i+j)//2]
+            score -= self.pst['R'][A1 if j < i else H1]
         # Special pawn stuff
         if p == 'P':
             if A8 <= j <= H8:
-                score += pst['Q'][j] - pst['P'][j]
+                score += self.pst['Q'][j] - self.pst['P'][j]
             if j == self.ep:
-                score += pst['P'][119-(j+S)]
+                score += self.pst['P'][119-(j+S)]
         return score
 
 ###############################################################################
@@ -407,9 +416,8 @@ def print_pos(pos):
 
 
 def main():
-    pos = Position(initial, 0, (True,True), (True,True), 0, 0)
+    pos = Position(initial, 0, (True,True), (True,True), 0, 0, pst)
     searcher = Searcher()
-    score = 0
     while True:
         # Fire up the engine to look for a move.
         move, score = searcher.search(pos, secs=0.1)
