@@ -61,10 +61,10 @@ pst = {
             17,  30,  -3, -14,   6,  -1,  40,  18),
 }
 # Pad tables and join piece and pst dictionaries
-for k, table in pst.items():
-    padrow = lambda row: (0,) + tuple(x+piece[k] for x in row) + (0,)
-    pst[k] = sum((padrow(table[i*8:i*8+8]) for i in range(8)), ())
-    pst[k] = (0,)*20 + pst[k] + (0,)*20
+# for k, table in pst.items():
+#     padrow = lambda row: (0,) + tuple(x+piece[k] for x in row) + (0,)
+#     pst[k] = sum((padrow(table[i*8:i*8+8]) for i in range(8)), ())
+#     pst[k] = (0,)*20 + pst[k] + (0,)*20
 
 ###############################################################################
 # Global constants
