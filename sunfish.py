@@ -1,4 +1,3 @@
-#!/usr/bin/env pypy
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
@@ -401,7 +400,7 @@ def render(i):
 def print_pos(pos):
     print()
     uni_pieces = {'R':'♜', 'N':'♞', 'B':'♝', 'Q':'♛', 'K':'♚', 'P':'♟',
-                  'r':'♖', 'n':'♘', 'b':'♗', 'q':'♕', 'k':'♔', 'p':'♙', '.':'·'}
+                 'r':'♖', 'n':'♘', 'b':'♗', 'q':'♕', 'k':'♔', 'p':'♙', '.':'·'}
     for i, row in enumerate(pos.board.split()):
         print(' ', 8-i, ' '.join(uni_pieces.get(p, p) for p in row))
     print('    a b c d e f g h \n\n')
@@ -410,42 +409,27 @@ def print_pos(pos):
 def main():
     pos = Position(initial, 0, (True,True), (True,True), 0, 0)
     searcher = Searcher()
+    score = 0
     while True:
-        print_pos(pos)
-
-        if pos.score <= -MATE_LOWER:
-            print("You lost")
-            break
-
-        # We query the user until she enters a (pseudo) legal move.
-        move = None
-        while move not in pos.gen_moves():
-            match = re.match('([a-h][1-8])'*2, input('Your move: '))
-            if match:
-                move = parse(match.group(1)), parse(match.group(2))
-            else:
-                # Inform the user when invalid input (e.g. "help") is entered
-                print("Please enter a move like g8f6")
+        # Fire up the engine to look for a move.
+        move, score = searcher.search(pos, secs=0.1)
         pos = pos.move(move)
-
-        # After our move we rotate the board and print it again.
-        # This allows us to see the effect of our move.
         print_pos(pos.rotate())
+        print(-pos.score)
 
         if pos.score <= -MATE_LOWER:
-            print("You won")
+            print("Checkmate! White wins")
             break
 
         # Fire up the engine to look for a move.
-        move, score = searcher.search(pos, secs=2)
-
-        if score == MATE_UPPER:
-            print("Checkmate!")
-
-        # The black player moves from a rotated position, so we have to
-        # 'back rotate' the move before printing it.
-        print("My move:", render(119-move[0]) + render(119-move[1]))
+        move, score = searcher.search(pos, secs=0.1)
         pos = pos.move(move)
+        print_pos(pos)
+        print(pos.score)
+
+        if pos.score <= -MATE_LOWER:
+            print("Checkmate! Black wins")
+            break
 
 
 if __name__ == '__main__':
