@@ -3,7 +3,7 @@ from random import randint
 import sunfish
 
 MAX_NUM_MOVES = 200
-SEARCH_TIME = 1
+SEARCH_TIME = 2
 
 class PST:
     def randomize_pst(pst, randomness):
