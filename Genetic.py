@@ -1,9 +1,11 @@
 import pickle
+import re, os
 from random import randint
+from math import floor
 import sunfish
 
 MAX_NUM_MOVES = 200
-SEARCH_TIME = 1
+SEARCH_TIME = 0.2
 
 class PST:
     def randomize_pst(pst, randomness):
@@ -70,6 +72,32 @@ class Engine:
         self.piece = PST.randomize_piece(self.piece, random_piece)
         self.pst_padded = PST.generate_pst_padded(self.pst, self.piece)
 
+    # Convert from 'd2d4' to '(84, 64)'
+    def parse(self, c):
+        fil, rank = ord(c[0]) - ord('a'), int(c[1]) - 1
+        A = 91 + fil - 10*rank
+        fil, rank = ord(c[2]) - ord('a'), int(c[3]) - 1
+        B = 91 + fil - 10*rank
+        return (A,B)
+
+    # Convert from '(84, 64)' to 'd2d4'
+    def inv_parse(self, c):
+        a,b = c # Separate squares
+        move = str(chr(97-1+a%10))+str(10-floor(a/10))
+        return move + str(chr(97-1+b%10))+str(10-floor(b/10))
+
+    # 2 functions below act as the API
+    # play_move returns the move
+    # opp_move keeps track of the opponents move
+    def play_move(self):
+        move, score = self.searcher.search(self.pos, secs=SEARCH_TIME)
+        self.pos = self.pos.move(move)
+        return self.inv_parse(move)
+
+    def opp_move(self, move):
+        self.pos = self.pos.move(self.parse(move))
+
+
 
 class Game:
     def __init__(self, white_engine, black_engine, print_pos):
@@ -77,8 +105,7 @@ class Game:
         self.black = black_engine
         self.print = print_pos
         self.winner = ""
-        self.num_moves = 0
-        self.moves = [(0,0), (0,0), (0,0), (0,0), (0,0), (0,0), (0,0), (0,0)]
+        self.moves = []
 
     def play(self):
         self.white.reset_position()
@@ -88,39 +115,63 @@ class Game:
             move, score = self.white.searcher.search(self.white.pos, secs=SEARCH_TIME)
             self.white.pos = self.white.pos.move(move)
             self.black.pos = self.black.pos.move(move)
-            self.moves[self.num_moves%8] = move
-            self.num_moves += 1
+            self.moves.append(self.white.inv_parse(move))
             if self.print:
                 sunfish.print_pos(self.white.pos.rotate())
                 print(-self.white.pos.score)
 
             if self.white.pos.score <= -sunfish.MATE_LOWER:
                 self.winner = "White"
-                return
+                break
 
             # Black to move.
             move, score = self.black.searcher.search(self.black.pos, secs=SEARCH_TIME)
             self.white.pos = self.white.pos.move(move)
             self.black.pos = self.black.pos.move(move)
-            self.moves[self.num_moves%8] = move
-            self.num_moves += 1
+            self.moves.append(self.black.inv_parse(move))
             if self.print:
                 sunfish.print_pos(self.black.pos)
                 print(self.black.pos.score)
 
             if self.black.pos.score <= -sunfish.MATE_LOWER:
                 self.winner = "Black"
-                return
+                break
 
             # Check for draw
-            if (self.moves[0] == self.moves[4] and self.moves[2] == self.moves[6] and
-                self.moves[1] == self.moves[5] and self.moves[3] == self.moves[7]):
-                self.winner = "Draw"
-                return
-            if self.num_moves >= MAX_NUM_MOVES:
-                self.winner = "Draw"
-                return
-        
+            if len(self.moves) > 8:
+                if (self.moves[-8] == self.moves[-4] and self.moves[-2] == self.moves[-6] and
+                    self.moves[-1] == self.moves[-5] and self.moves[-3] == self.moves[-7]):
+                    self.winner = "Draw"
+                    break
+            elif len(self.moves) >= MAX_NUM_MOVES:
+                    self.winner = "Draw"
+                    break
+        self.save_moves()
+
+    def save_moves(self):
+        game_num = 1
+        path = 'Games/' + str(game_num) + '.pckl'
+        while os.path.isfile(path):
+            game_num += 1
+            path = 'Games/' + str(game_num) + '.pckl'
+        f = open('Games/' + str(game_num) + '.pckl', 'wb')
+        pickle.dump(self.moves, f)
+        f.close()
+
+    def load_moves(self, game_num):
+        f = open('Games/' + str(game_num) + '.pckl', 'rb')
+        self.moves = pickle.load(f)
+        f.close()
+        self.white.reset_position()
+        i = 0
+        for move in self.moves:
+            self.white.pos = self.white.pos.move(self.white.parse(move))
+            if i%2 == 0:
+                sunfish.print_pos(self.white.pos.rotate())
+            else:
+                sunfish.print_pos(self.white.pos)
+            i += 1
+
 
 class Match:
     def __init__(self, engine1, engine2, num_games, print_pos=False):
@@ -159,8 +210,7 @@ class Match:
         print("Final score:", self.score)
 
 
-def main():
-    PST.save_data(sunfish.init_pst, sunfish.init_piece, "Best")
+def train():
     #Configurations
     piece_randomness = 10
     pst_randomness = 10
@@ -190,4 +240,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    train()
