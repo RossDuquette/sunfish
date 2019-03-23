@@ -5,7 +5,7 @@ from math import floor
 import sunfish
 
 MAX_NUM_MOVES = 200
-SEARCH_TIME = 2
+SEARCH_TIME = 0.25
 
 class PST:
     def randomize_pst(pst, randomness):
@@ -59,6 +59,7 @@ class Engine:
     
     def reset_position(self):
         self.pos = sunfish.Position(sunfish.initial, 0, (True,True), (True,True), 0, 0, self.pst_padded)
+        self.searcher = sunfish.Searcher()
 
     def load_from_pckl(self, prefix):
         self.pst, self.piece = PST.load_data(prefix)
@@ -73,7 +74,9 @@ class Engine:
         self.pst_padded = PST.generate_pst_padded(self.pst, self.piece)
 
     # Convert from 'd2d4' to '(84, 64)'
-    def parse(self, c):
+    def parse(self, c, black=False):
+        if black:
+            c = self.convert_black_move(c)
         fil, rank = ord(c[0]) - ord('a'), int(c[1]) - 1
         A = 91 + fil - 10*rank
         fil, rank = ord(c[2]) - ord('a'), int(c[3]) - 1
@@ -81,21 +84,33 @@ class Engine:
         return (A,B)
 
     # Convert from '(84, 64)' to 'd2d4'
-    def inv_parse(self, c):
+    def inv_parse(self, c, black=False):
         a,b = c # Separate squares
         move = str(chr(97-1+a%10))+str(10-floor(a/10))
-        return move + str(chr(97-1+b%10))+str(10-floor(b/10))
+        move += str(chr(97-1+b%10))+str(10-floor(b/10))
+        if black:
+            move = self.convert_black_move(move)
+        return move
+
+    # Rotates board to move for black, need to rotate move
+    # 'move' is in conventional notation: 'd2d4'
+    def convert_black_move(self, move):
+        new_move = str(chr(ord('h') - ord(move[0]) + ord('a')))
+        new_move += str(8-int(move[1])+1)
+        new_move += str(chr(ord('h') - ord(move[2]) + ord('a')))
+        new_move += str(8-int(move[3])+1)
+        return new_move
 
     # 2 functions below act as the API
     # play_move returns the move
     # opp_move keeps track of the opponents move
-    def play_move(self):
+    def play_move(self, black=False):
         move, score = self.searcher.search(self.pos, secs=SEARCH_TIME)
         self.pos = self.pos.move(move)
-        return self.inv_parse(move)
+        return self.inv_parse(move, black)
 
-    def opp_move(self, move):
-        self.pos = self.pos.move(self.parse(move))
+    def opp_move(self, move, black=False):
+        self.pos = self.pos.move(self.parse(move, black))
 
 
 
@@ -115,8 +130,9 @@ class Game:
             move, score = self.white.searcher.search(self.white.pos, secs=SEARCH_TIME)
             self.white.pos = self.white.pos.move(move)
             self.black.pos = self.black.pos.move(move)
-            self.moves.append(self.white.inv_parse(move))
+            self.moves.append(self.white.inv_parse(move, False))
             if self.print:
+                print(self.white.inv_parse(move, False))
                 sunfish.print_pos(self.white.pos.rotate())
                 print(-self.white.pos.score)
 
@@ -128,8 +144,9 @@ class Game:
             move, score = self.black.searcher.search(self.black.pos, secs=SEARCH_TIME)
             self.white.pos = self.white.pos.move(move)
             self.black.pos = self.black.pos.move(move)
-            self.moves.append(self.black.inv_parse(move))
+            self.moves.append(self.black.inv_parse(move, True))
             if self.print:
+                print(self.black.inv_parse(move, True))
                 sunfish.print_pos(self.black.pos)
                 print(self.black.pos.score)
 
@@ -141,11 +158,12 @@ class Game:
             if len(self.moves) > 8:
                 if (self.moves[-8] == self.moves[-4] and self.moves[-2] == self.moves[-6] and
                     self.moves[-1] == self.moves[-5] and self.moves[-3] == self.moves[-7]):
-                    self.winner = "Draw"
+                    self.winner = "Draw - Repetition"
                     break
             elif len(self.moves) >= MAX_NUM_MOVES:
-                    self.winner = "Draw"
+                    self.winner = "Draw - Max Moves"
                     break
+        print(self.winner)
         self.save_moves()
 
     def save_moves(self):
@@ -165,10 +183,11 @@ class Game:
         self.white.reset_position()
         i = 0
         for move in self.moves:
-            self.white.pos = self.white.pos.move(self.white.parse(move))
             if i%2 == 0:
+                self.white.pos = self.white.pos.move(self.white.parse(move, False))
                 sunfish.print_pos(self.white.pos.rotate())
             else:
+                self.white.pos = self.white.pos.move(self.white.parse(move, True))
                 sunfish.print_pos(self.white.pos)
             i += 1
 
@@ -221,7 +240,7 @@ def train():
     engine2 = Engine("Best")
     engine2.evolve(pst_randomness, piece_randomness)
     for gen in range(generations):
-        print("Generation", gen+1)
+        print("\nGeneration", gen+1)
         engine2.save_to_pckl("GEN"+str(gen+1))
         match = Match(engine1, engine2, games_per_match, False)
         match.play()
