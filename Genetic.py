@@ -171,6 +171,7 @@ def main():
     engine2 = Engine("Best")
     engine2.evolve(pst_randomness, piece_randomness)
     for gen in range(generations):
+        print("Generation", gen+1)
         engine2.save_to_pckl("GEN"+str(gen+1))
         match = Match(engine1, engine2, games_per_match, False)
         match.play()
