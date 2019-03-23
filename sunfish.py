@@ -9,8 +9,8 @@ from collections import OrderedDict, namedtuple
 # Piece-Square tables. Tune these to change sunfish's behaviour
 ###############################################################################
 
-piece = { 'P': 100, 'N': 280, 'B': 320, 'R': 479, 'Q': 929, 'K': 60000 }
-pst = {
+init_piece = { 'P': 100, 'N': 280, 'B': 320, 'R': 479, 'Q': 929, 'K': 60000 }
+init_pst = {
     'P': (   0,   0,   0,   0,   0,   0,   0,   0,
             78,  83,  86,  73, 102,  82,  85,  90,
              7,  29,  21,  44,  40,  31,  44,   7,
@@ -104,8 +104,8 @@ directions = {
 # 8 queens up, but we got the king, we still exceed MATE_VALUE.
 # When a MATE is detected, we'll set the score to MATE_UPPER - plies to get there
 # E.g. Mate in 3 will be MATE_UPPER - 6
-MATE_LOWER = piece['K'] - 10*piece['Q']
-MATE_UPPER = piece['K'] + 10*piece['Q']
+MATE_LOWER = init_piece['K'] - 10*init_piece['Q']
+MATE_UPPER = init_piece['K'] + 10*init_piece['Q']
 
 # The table size is the maximum number of elements in the transposition table.
 TABLE_SIZE = 1e8

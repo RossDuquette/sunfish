@@ -2,7 +2,7 @@ import pickle
 from random import randint
 import sunfish
 
-MAX_NUM_MOVES = 100
+MAX_NUM_MOVES = 200
 SEARCH_TIME = 1
 
 class PST:
@@ -22,11 +22,12 @@ class PST:
         return new_piece
 
     def generate_pst_padded(pst, piece):
+        new_pst = {}
         for k,table in pst.items():
             padrow = lambda row: (0,) + tuple(x+piece[k] for x in row) + (0,)
-            pst[k] = sum((padrow(table[i*8:i*8+8]) for i in range(8)), ())
-            pst[k] = (0,)*20 + pst[k] + (0,)*20
-        return pst
+            new_pst[k] = sum((padrow(table[i*8:i*8+8]) for i in range(8)), ())
+            new_pst[k] = (0,)*20 + new_pst[k] + (0,)*20
+        return new_pst
         
 
     def save_data(pst, piece, prefix):
@@ -159,26 +160,32 @@ class Match:
 
 
 def main():
+    PST.save_data(sunfish.init_pst, sunfish.init_piece, "Best")
     #Configurations
     piece_randomness = 10
     pst_randomness = 10
     games_per_match = 2
-    generations = 20
+    generations = 100
     # Load current best engine
     engine1 = Engine("Best")
     engine2 = Engine("Best")
     engine2.evolve(pst_randomness, piece_randomness)
-    engine2.save_to_pckl("GEN1")
     for gen in range(generations):
-        match = Match(engine1, engine2, games_per_match, True)
-        print("Generation", gen+1)
+        engine2.save_to_pckl("GEN"+str(gen+1))
+        match = Match(engine1, engine2, games_per_match, False)
         match.play()
         if match.score > 0:
             print("Winner is Engine1!")
+            engine2.load_from_pckl("Best") # Copy engine 1
+            engine2.evolve(pst_randomness, piece_randomness)
         elif match.score < 0:
             print("Winner is Engine2!")
+            engine2.save_to_pckl("Best")
+            engine1.load_from_pckl("Best")
+            engine2.evolve(pst_randomness, piece_randomness)
         else:
             print("Match ends in a draw")
+            engine2.evolve(pst_randomness, piece_randomness)
     
 
 
