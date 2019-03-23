@@ -1,11 +1,11 @@
 import pickle
 import re, os
-from random import randint
+from random import triangular
 from math import floor
 import sunfish
 
 MAX_NUM_MOVES = 200
-SEARCH_TIME = 0.25
+SEARCH_TIME = 0.2
 
 class PST:
     def randomize_pst(pst, randomness):
@@ -13,14 +13,14 @@ class PST:
         for piece,table in pst.items():
             new_pst[piece] = []
             for square in range(len(table)):
-                new_pst[piece].append(table[square] + randint(-1*randomness,randomness))
+                new_pst[piece].append(table[square] + round(triangular(-1*randomness,randomness,0)))
             new_pst[piece] = tuple(new_pst[piece])
         return new_pst
 
     def randomize_piece(piece, randomness):
         new_piece = {}
         for letter,value in piece.items():
-            new_piece[letter] = value + randint(-1*randomness,randomness)
+            new_piece[letter] = value + round(triangular(-1*randomness,randomness,0))
         return new_piece
 
     def generate_pst_padded(pst, piece):
@@ -185,9 +185,11 @@ class Game:
         for move in self.moves:
             if i%2 == 0:
                 self.white.pos = self.white.pos.move(self.white.parse(move, False))
+                print(move)
                 sunfish.print_pos(self.white.pos.rotate())
             else:
                 self.white.pos = self.white.pos.move(self.white.parse(move, True))
+                print(move)
                 sunfish.print_pos(self.white.pos)
             i += 1
 
@@ -231,12 +233,12 @@ class Match:
 
 def train():
     #Configurations
-    piece_randomness = 10
-    pst_randomness = 10
+    piece_randomness = 3
+    pst_randomness = 4
     games_per_match = 2
     generations = 100
     # Load current best engine
-    engine1 = Engine("Best")
+    engine1 = Engine("Init")
     engine2 = Engine("Best")
     engine2.evolve(pst_randomness, piece_randomness)
     for gen in range(generations):
@@ -256,8 +258,28 @@ def train():
         else:
             print("Match ends in a draw")
             engine2.evolve(pst_randomness, piece_randomness)
+
+def playback(game_num):
+    engine = Engine("Best")
+    game = Game(engine, None, True)
+    game.load_moves(game_num)
+
+def show_params(prefix):
+    engine = Engine(prefix)
+    print(engine.pst)
+    print(engine.piece)
+
+def play_stock():
+    engine_trained = Engine("Best")
+    engine_stock = Engine("Init")
+    match = Match(engine_trained, engine_stock,4)
+    match.play()
     
 
 
 if __name__ == '__main__':
-    train()
+    #train()
+    playback(236)
+    # show_params("Best")
+    # show_params("Init")
+    # play_stock()
