@@ -5,7 +5,7 @@ from math import floor
 import sunfish
 
 MAX_NUM_MOVES = 200
-SEARCH_TIME = 0.2
+SEARCH_TIME = 2
 
 class PST:
     def randomize_pst(pst, randomness):
